@@ -13,12 +13,14 @@
 #include "sys/param.h" /* MIN(), MAX() */
 
 /* Transparent pixel, Pixel, Transparent Cursor, Cursor; and same yet selected. */
-const char figure[] = " .  <>[]s.s s>s]";
+const char* figure[] = {"▀▄", "▓▓", "<>", "[]", "//", "##", "{}", "()"}; // ▒▒
 
 #define DEBUG 0
 
 #define MAX_XSIZE 64
 #define MAX_YSIZE 64
+
+#define TEMP_FILENAME "/dev/shm/lacie_tmp.pam"  /* Do not wear out SSD, use RAM instead. */
 
 const char* pam_header[] = {"P7\n",
                             "WIDTH %d\n",
@@ -141,6 +143,12 @@ int main(int argc, char *argv[])
 
     if (access(argv[1], F_OK) == 0)
         load_image_from_file(argv[1]);
+
+    /* Initial preview. */
+    save_image_to_file(TEMP_FILENAME);
+
+    /* Please use a and A keys for toggle transparency and antialiasing, + for zoom. */
+    system("sxiv -b -g 64x64 "TEMP_FILENAME" &"); /* FIXME it lacks many CLI keys yet, sadly. */
 
     // printf("\x1b[2J\x1b[H");           /* Clear screen */
     goto draw;
@@ -318,23 +326,29 @@ draw:
                 if (is_cursor && put)
                     screen[x][y] = color;
 
+                int is_transparent = (screen[x][y] == 255);
+
+                int is_selected = ((x >= xSelStart) && (x < xSelEnd) &&
+                                   (y >= ySelStart) && (y < ySelEnd));
+
                 int c = /*is_cursor ? color :*/ screen[x][y];
 
                 /* 4 bit EGA/VGA: 0x0000IRGB, where I is intensity.
                  * Note this is not full range, to save eyes.       */
-                int bg = !!(c & 4) * 0x00007f +
+                int fg = !!(c & 4) * 0x00007f +
                          !!(c & 2) * 0x007f00 +
                          !!(c & 1) * 0x7f0000 +
                          !!(c & 8) * 0x3f3f3f;
 
-                int is_transparent = (screen[x][y] == 255);
+                int bg = is_cursor ? fg ^ 0xffffff : is_selected ? 0x3f3f3f : 0;
+
                 if (is_transparent)
-                    bg = 0x3f3f3f;
+                {
+                    fg = 0x3f3f3f;
+                    bg = 0x1f1f1f;
+                }
 
-                int fg = is_cursor ? 0xffffff : bg ^ 0xffffff;
 
-                int is_selected = ((x >= xSelStart) && (x < xSelEnd) &&
-                                   (y >= ySelStart) && (y < ySelEnd));
 
                 printf("\x1b[38;2;%d;%d;%dm", (fg & 255), ((fg >> 8) & 255), ((fg >> 16) & 255));
                 printf("\x1b[48;2;%d;%d;%dm", (bg & 255), ((bg >> 8) & 255), ((bg >> 16) & 255));
@@ -342,9 +356,10 @@ draw:
                 /* Blinking: Will it be helpful ? */
                 if ((is_cursor) /* && (cursor_r_ext <= 1.0f) */)
                     printf("\x1b[5m");
+                    // printf("\x1b[0;5m");
 
-                int index = (is_selected * 4 + is_cursor * 2 + ! is_transparent) * 2;
-                printf("%c%c", figure[index], figure[index + 1]);
+                int index = (is_selected * 4 + is_cursor * 2 + ! is_transparent);
+                printf("%s", figure[index]);
                 printf("\x1b[0m");
             }
             printf(" %d\n", y);
@@ -352,7 +367,7 @@ draw:
 
         /* Auto updated temp image used for preview with some viewer with auto-update of file. */
         if (put)
-            save_image_to_file("/dev/shm/lacie_tmp.pam"); /* No wear out SSD, use RAM instead. */
+            save_image_to_file(TEMP_FILENAME);
 
         put = 0;
 
