@@ -20,7 +20,16 @@ Probably, some preprocessing will be need. With GIMP 2.x, using some small image
 * Use `Color → Levels` and draw two (three) step ladder to use bi- or tri-level comparator.
 * Save as format with transparency support, like add `.png` file name suffix.
 
-TODO:
+Live preview
+------------
+As `magick display` does not have live update, I provide `sxiv` startup. Please use `a`, `A` and `+` keys to control its pixel-precise behaviour.
+
+File save
+---------
+There is no auto save nor check on exit. You should save each time by hand. There is also preview copy at `/dev/shm`.
+
+TODO
+----
 * Shift canvas. It is not easy to get Shift nor Caps state with console, running under window manager; maybe with `ncurses` can be possible.
 * Add keyboard control for not to roll over out-of-bounds pixels (aka toroidal or endless canvas).
 
