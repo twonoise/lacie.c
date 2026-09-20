@@ -1,7 +1,7 @@
 # lacie.c
 lacie.c is Linux Ansi Console Image Editor for 1-bit or 4-bit palette, with transparency
 
-If you are here, you probably noticed that today there is too few to no any tiny, preferably console based (which implies keyboard-driven), low colors, user friendly (include code) yet rich pixel-precise editors with transparency, block copy, fine-tuned circles and undo.
+If you are here, you probably noticed that today there is too few to no any tiny, preferably console based (which implies keyboard-driven), low colors, user friendly (include code), few dependency, yet rich pixel-precise editors with transparency, block copy, fine-tuned circles and undo.
 Here I am try to somewhat fix this. So I write it myself.
 
 As the code is tiny and self explaining (I hope), please learn all keyboard bindings from code. And, most probably, you would need to change some, as key codes are terminal dependent. Please feel free to update code and add your features.
@@ -22,7 +22,9 @@ Probably, some preprocessing will be need. With GIMP 2.x, using some small image
 
 Live preview
 ------------
-As `magick display` does not have live update, I provide `sxiv` startup. Please use `a`, `A` and `+` keys to control its pixel-precise behaviour.
+As `magick display` does not have live update, I provide `sxiv` startup. Please use `a`, `A` and `+` keys to control its pixel-precise behaviour. 
+
+Note that current `sxiv` is of very lean of CLI options, sadly. As its background color is white, and there is not possible to state background color using CLI, be aware of eyes health and switch to transparent background by hand using key above. This is also reason to use small 64x64 initial window; once background color changed to safe one, one may then to enlarge window.
 
 File save
 ---------
@@ -88,7 +90,7 @@ There are at least two obvious ways of modulation, to sum and to multiply.
 
 Multiplying was used on ZX Spectrum video system. It does not allow gray color: black multiplied by any value, remains black. So there was only 15 colors of 16.
 
-IBM uses `I` bit as summing with about 1/2 of full-range CRT cathode voltages (note again: adds to all RGB bits). This gives full 16 colors set. But unlike of ZX Spectrum, this does not allow pure colors (like 100% red) _today_. Half of century ago, it was like (really) bright red, and even more bright (more than 100% in modern terms) when `I` bit was set; CRTs allows for that. To squeeze it into present time hard-limited range of like `0x00` to `0xff` per channel, one uses `0x00` and `0xaa` values for RGB channels when `I` bit cleared, and `0x55` and `0xff` when `I` set; in other words, we add 1/3 of full range. It is can be easily noted that pure color like red 0x0000ff is impossible.
+IBM uses `I` bit as summing with about 1/2 of full-range CRT cathode voltages (note again: adds to all RGB bits). This gives full 16 colors set. But unlike of ZX Spectrum, this does not allow pure colors (like 100% red) _today_. Half of century ago, it was like (really) bright red, and even more bright (more than 100% in modern terms) when `I` bit was set; CRTs allows for that. To squeeze it into present time hard-limited range of like `0x00` to `0xff` per channel, one uses `0x00` and `0xaa` values for RGB channels when `I` bit cleared, and `0x55` and `0xff` when `I` set; in other words, we add 1/3 of full range. It is can be easily noted that pure color like red 0x0000ff is impossible. Btw, one also may note that colors which differs by `I` bit, are referred like "same chrominance, different luminance" [^1].
 
 To create this palette image:
 
@@ -103,6 +105,8 @@ There was one irregular color in 4-bit palette. IBM decided to replace dark yell
     000002020022200202210222111113131133311313331333
 
 in command above. All current color terminal emulators are does not use brown color; this editor also does not, but can be easily added.
+
+[^1]: https://raw.githubusercontent.com/torvalds/linux/refs/heads/master/drivers/video/fbdev/core/fbcon.c
 
 LICENSE
 =======
