@@ -13,7 +13,7 @@
 #include "sys/param.h" /* MIN(), MAX() */
 
 /* Transparent pixel, Pixel, Transparent Cursor, Cursor; and same yet selected. */
-const char* figure[] = {"▀▄", "▓▓", "<>", "[]", "//", "##", "{}", "()"}; // ▒▒
+const char* figure[] = {"▀▄", "██", "▒▒", "▒▒", "//", "##", "{}", "()"};
 
 #define DEBUG 0
 
@@ -132,6 +132,13 @@ int main(int argc, char *argv[])
     if ((argc < 2) || ((argc == 2) && (argv[1][1] == '-')))
         ERREXIT("Usage:  lacie (new)filename.pam\n");
 
+    int is_fbcon = !system("tty | grep tty");
+
+    /* Change EGA16 brown color to dark yellow will work for bare console (fbcon) only.
+     * All X11 terminals are already defines this color as dark yellow. */
+    if (is_fbcon)
+        printf("\x1b]P3AAAA00\n");
+
     struct termios attr;
 
     tcgetattr(STDIN_FILENO, &attr);
@@ -172,8 +179,10 @@ int main(int argc, char *argv[])
                 case 0x425b1b:    MOVE(y,  1);               break;
                 case 0x445b1b:    MOVE(x, -1);               break;
                 case 0x435b1b:    MOVE(x,  1);               break;
-                case 0x485b1b:    MOVE(x, -1); MOVE(y, -1);  break; /* Home */
-                case 0x465b1b:    MOVE(x, -1); MOVE(y,  1);  break; /* End  */
+                case 0x7e315b1b:                                    /* Home, fbcon */
+                case 0x485b1b:    MOVE(x, -1); MOVE(y, -1);  break; /* Home, x11   */
+                case 0x7e345b1b:                                    /* End,  fbcon */
+                case 0x465b1b:    MOVE(x, -1); MOVE(y,  1);  break; /* End,  x11   */
                 case 0x7e355b1b:  MOVE(x,  1); MOVE(y, -1);  break; /* PgUp */
                 case 0x7e365b1b:  MOVE(x,  1); MOVE(y,  1);  break; /* PdDn */
 
@@ -189,7 +198,8 @@ int main(int argc, char *argv[])
 
                 /* Rectangular block select and copy, like with 'mcedit' */
 
-                case 0x524f1b:  /* F3, select start & select end */
+                case 0x435b5b1b:  /* F3, fbcon, */
+                case 0x524f1b:    /* F3, x11:   select start & select end */
                     cursor_r_ext = 1.0f;
                     mode_select = ! mode_select;
                     if (mode_select)
@@ -199,7 +209,8 @@ int main(int argc, char *argv[])
                     }
                     break;
 
-                case 0x7e35315b1b: /* F5, block copy to cursor */
+                case 0x455b5b1b:   /* F5, fbcon, */
+                case 0x7e35315b1b: /* F5, x11:   block copy to cursor */
                     cursor_r_ext = 1.0f;
                     if ((xSelStart != xSelEnd) && (ySelStart != ySelEnd))
                     {
@@ -331,31 +342,32 @@ draw:
                 int is_selected = ((x >= xSelStart) && (x < xSelEnd) &&
                                    (y >= ySelStart) && (y < ySelEnd));
 
-                int c = /*is_cursor ? color :*/ screen[x][y];
+                int c = screen[x][y];
 
                 /* 4 bit EGA/VGA: 0x0000IRGB, where I is intensity.
-                 * Note this is not full range, to save eyes.       */
-                int fg = !!(c & 4) * 0x00007f +
-                         !!(c & 2) * 0x007f00 +
-                         !!(c & 1) * 0x7f0000 +
-                         !!(c & 8) * 0x3f3f3f;
+                 * Note this is not full range for X11, to save eyes,
+                 * and to make cursor brighter than *any* color, include white. */
+                uint8_t A = is_fbcon ? 0x55 : 0x33;
 
-                int bg = is_cursor ? fg ^ 0xffffff : is_selected ? 0x3f3f3f : 0;
+                int fg = is_transparent ? (A * 0x010101) :
+                         !!(c & 4) * (A * 0x000002) +
+                         !!(c & 2) * (A * 0x000200) +
+                         !!(c & 1) * (A * 0x020000) +
+                         !!(c & 8) * (A * 0x010101);
 
-                if (is_transparent)
-                {
-                    fg = 0x3f3f3f;
-                    bg = 0x1f1f1f;
-                }
+                int bg = is_transparent ? ((A / 2) * 0x010101) : 0;
 
-
+                /* With fbcon, there is not possible to have more than 16 colors, sadly.
+                 * So one of colors will be not seen under cursor; it will be 7, light gray. */
+                if (is_cursor)
+                    bg = (!is_fbcon || (c < 7) || (c == 8) || (c == 255)) ? 0xffffff : 0;
 
                 printf("\x1b[38;2;%d;%d;%dm", (fg & 255), ((fg >> 8) & 255), ((fg >> 16) & 255));
                 printf("\x1b[48;2;%d;%d;%dm", (bg & 255), ((bg >> 8) & 255), ((bg >> 16) & 255));
 
                 /* Blinking: Will it be helpful ? */
-                if ((is_cursor) /* && (cursor_r_ext <= 1.0f) */)
-                    printf("\x1b[5m");
+                // if ((is_cursor) /* && (cursor_r_ext <= 1.0f) */)
+                //     printf("\x1b[5m");
                     // printf("\x1b[0;5m");
 
                 int index = (is_selected * 4 + is_cursor * 2 + ! is_transparent);
