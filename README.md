@@ -34,6 +34,7 @@ TODO
 ----
 * Shift canvas. It is not easy to get Shift nor Caps state with console, running under window manager; maybe with `ncurses` can be possible.
 * Add keyboard control for not to roll over out-of-bounds pixels (aka toroidal or endless canvas).
+* Add flood fill.
 
 Addendum 1: Low color images
 ============================
